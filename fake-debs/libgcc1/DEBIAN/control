@@ -1,0 +1,11 @@
+Package: libgcc1
+Version: 1:4.4.1-5
+Section: main
+Priority: required
+Architecture: all
+Depends: 
+Installed-Size:
+Provides:
+Conflicts:
+Maintainer: Wei Hu <weihu@cs.virginia.edu>
+Description: Fake libgcc1
