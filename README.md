@@ -25,9 +25,9 @@ more.
 
 # How-to
 <pre><code># Turn off rootfs verification
-sudo /usr/share/vboot/bin/make_dev_ssd --remove_rootfs_verification
+sudo /usr/share/vboot/bin/make_dev_ssd.sh --remove_rootfs_verification
+sudo reboot
 
-# Reboot, and then remount / rw
 sudo mount -o remount,rw /
 
 # Remount /var exec because dpkg wants to execute scripts extracted from .deb files
