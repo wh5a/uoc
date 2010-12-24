@@ -1,11 +1,5 @@
 Package: libstdc++6
-Version: 4.4.1-5
-Section: main
-Priority: required
+Version: 4.4.1-4ubuntu9
 Architecture: all
-Depends: 
-Installed-Size:
-Provides:
-Conflicts:
-Maintainer: Wei Hu <weihu@cs.virginia.edu>
+Maintainer: Fake deb generator
 Description: Fake libstdc++6

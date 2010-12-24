@@ -1,6 +1,6 @@
 -- Since there's no Haskell binding to libapt-pkg-dev, we parse the output of the apt commands.
 
-module Apt(willInstall) where
+module Apt(willInstall, getVersion) where
 
 import System.Process
 import System.IO
@@ -25,3 +25,12 @@ willInstall pkg = do
 -- Given a package, guess if it's already installed, and let the user decide
 guess :: String -> IO Bool
 guess pkg = undefined
+
+-- Find out the version
+getVersion :: String -> IO String
+getVersion pkg =  do
+                    (_, Just hout, _, _) <- createProcess (proc "apt-cache" ["policy", pkg]){ std_out = CreatePipe }
+                    contents <- hGetContents hout
+                    let outputs = lines contents
+                        candidateLine = head $ filter (isInfixOf "Candidate:") outputs
+                    return ((words candidateLine) !! 1)

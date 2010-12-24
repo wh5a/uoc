@@ -1,11 +1,5 @@
 Package: coreutils
-Version: 7.4-3
-Section: main
-Priority: required
+Version: 7.4-2ubuntu1
 Architecture: all
-Depends: 
-Installed-Size:
-Provides:
-Conflicts:
-Maintainer: Wei Hu <weihu@cs.virginia.edu>
+Maintainer: Fake deb generator
 Description: Fake coreutils

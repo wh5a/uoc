@@ -1,11 +1,5 @@
 Package: libc6
-Version: 2.10.1-2
-Section: main
-Priority: required
+Version: 2.10.1-0ubuntu18
 Architecture: all
-Depends: 
-Installed-Size:
-Provides:
-Conflicts:
-Maintainer: Wei Hu <weihu@cs.virginia.edu>
+Maintainer: Fake deb generator
 Description: Fake libc6
