@@ -1,5 +1,0 @@
-Package: libstdc++6
-Version: 4.4.1-4ubuntu9
-Architecture: all
-Maintainer: Fake deb generator
-Description: Fake libstdc++6

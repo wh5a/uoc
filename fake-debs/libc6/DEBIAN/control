@@ -1,5 +1,0 @@
-Package: libc6
-Version: 2.10.1-0ubuntu18
-Architecture: all
-Maintainer: Fake deb generator
-Description: Fake libc6

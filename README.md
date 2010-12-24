@@ -31,6 +31,7 @@ sudo reboot
 sudo mount -o remount,rw /
 
 # Remount /var exec because dpkg wants to execute scripts extracted from .deb files
+# This command must be run after each reboot
 sudo mount -o remount,exec /var
 
 # Download dpkg's data.tar.gz from Ubuntu Karmic, extract it to / to get the dpkg binary
@@ -54,7 +55,11 @@ and you'll find `/var/cache/apt/archives/foo*.deb`.
 Before you `apt-get install` a program, double check if it's pulling
 in any dependency that will overwrite existing files. Doing so
 may break the login manager, the browser, or any other critical
-program.
+program. I've created a simple tool `TestPkg`:
+<pre><code>
+$ ./tools/TestPkg ocaml
+["camlp4","ledit","libncurses5-dev","libpthread-stubs0","libpthread-stubs0-dev","libx11-dev","libxau-dev","libxcb1-dev","libxdmcp-dev","ocaml-base","ocaml-base-nox","ocaml-interp","ocaml-nox","x11proto-core-dev","x11proto-input-dev","x11proto-kb-dev","xtrans-dev"]
+</code></pre>
 
 I'll be updating the [wiki](https://github.com/wh5a/uoc/wiki/Compatible-Packages) for compatible programs.
 
@@ -64,11 +69,16 @@ auto update. Overwriting existing libraries may make your system fail
 to start. But good thing is you're always able to restore to factory setting.
 
 # How to contribute
-Please create more fake packages and send me a pull request. You'll
-want to give your fake package a higher version number than Ubuntu
-Karmic to prevent `apt-get` from upgrading it. I admit my approach is an ugly
-hack and if you know a better solution please let me know. You're also
-welcome to report which packages can be safely installed.
+I've created a simple tool `FakePkg` that automates the process of
+generating fake packages. Simply add the name of the package to
+`fake-debs/build-debs.sh`. If you've tested a fake package can be
+safely added, please send me a pull request and explain what real
+package was safely installed that requires the fake package you added.
+
+You're also welcome to improve my simple tools, or report which packages can be safely installed.
+
+I admit my approach is an ugly hack and if you know a better solution
+please let me know.
 
 # More techincal stuff for hackers
 ChromiumOS manages packages based on Gentoo's portage system. Its
@@ -106,3 +116,4 @@ For more information, see
 # To-do
 1. Port more packages
 2. Write scripts for auto installation
+3. Improve the workflow

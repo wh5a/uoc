@@ -1,5 +1,0 @@
-Package: coreutils
-Version: 7.4-2ubuntu1
-Architecture: all
-Maintainer: Fake deb generator
-Description: Fake coreutils

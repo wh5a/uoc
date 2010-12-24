@@ -1,5 +1,0 @@
-Package: libgcc1
-Version: 1:4.4.1-4ubuntu9
-Architecture: all
-Maintainer: Fake deb generator
-Description: Fake libgcc1
