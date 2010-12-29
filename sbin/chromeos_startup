@@ -1,0 +1,254 @@
+#!/bin/sh
+
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# The kernel mounts /proc and /sys during initialization, prior
+# to starting init.
+
+# Mount /tmp first, so that bootstat can record output right away.
+mount -n -t tmpfs -o nodev,noexec,nosuid tmp /tmp
+bootstat pre-startup
+
+# Since we defer udev until later in the boot process, we pre-populate /dev
+# with the set of devices needed for X and other early services to run.
+mount -n -t tmpfs -o noexec,nosuid,mode=0755 udev /dev
+cp -a -f /lib/chromiumos/devices/* /dev
+
+IS_FACTORY_MODE=
+if [ -f /root/.factory_test -o -f /root/.factory_installer ]; then
+  IS_FACTORY_MODE=1
+fi
+
+# Splash screen! Unless we are in noninteractive mode.
+# TODO(sosa@chromium.org) - Use kernel flag
+BOOT_SPLASH_PID=
+if [ -x /usr/bin/ply-image ]; then
+  if [ -z "$IS_FACTORY_MODE" ]; then
+    # Moblin trick: Disable blinking cursor. Without this a splash screen
+    # will show a distinct cursor shape even when the cursor is set to none.
+    echo 0 > /sys/devices/virtual/graphics/fbcon/cursor_blink
+    /usr/bin/ply-image /usr/share/chromeos-assets/images/boot_splash.png &
+    BOOT_SPLASH_PID="$!"
+  fi
+fi
+
+mount -n -t tmpfs -o nodev,noexec,nosuid shmfs /dev/shm
+mount -n -t devpts -o noexec,nosuid,gid=5,mode=0620 devpts /dev/pts
+
+# Prepare to mount stateful partition
+ROOT_DEV=$(rootdev -s)
+ROOTDEV_RET_CODE=$?
+# Check if we are booted on physical media. rootdev will fail if we are in
+# an initramfs or tmpfs rootfs.
+if [ "$ROOTDEV_RET_CODE" = "0" ]; then
+  # Find our stateful partition. It's always partition 1.
+  STATE_DEV=${ROOT_DEV%[0-9]*}1
+
+  # For factory install shim, we never want to write to the SDCard.
+  if [ -f /root/.factory_installer ]; then
+    mount -n -t tmpfs -o nodev,noexec,nosuid,mode=0755 tmp \
+      /mnt/stateful_partition
+    # Fetch our writeable lsb-release from the stateful
+    # partition if available.
+    TMP_STATEFUL="$(mktemp -d)"
+    FACTORY_LSB_REL="dev_image/etc/lsb-factory"
+    mkdir -p /mnt/stateful_partition/dev_image/etc
+    mount -n -t ext3 -o nodev,noexec,nosuid "$STATE_DEV" "$TMP_STATEFUL"
+    if [ -f "${TMP_STATEFUL}/${FACTORY_LSB_REL}" ]; then
+      cp -a "${TMP_STATEFUL}/${FACTORY_LSB_REL}" \
+          /mnt/stateful_partition/${FACTORY_LSB_REL}
+    fi
+    umount "$TMP_STATEFUL"
+    rmdir "$TMP_STATEFUL"
+
+  # For all other cases, mount stateful partition from STATE_DEV.
+  elif ! mount -n -t ext3 -o nodev,noexec,nosuid \
+         "$STATE_DEV" /mnt/stateful_partition; then
+    # Try to rebuild the stateful partition by  clobber-state
+    # (for security concern, we don't use fast mode)
+    [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
+    chromeos-boot-alert wipe /dev/tty1
+    exec clobber-state "keepimg"
+  fi
+fi
+
+# DEVMODE is used to determine if we're booted in developer mode,
+# by ignoring the bootloader detection and just checks the switch state.
+# Values: 0=recovery/non-dev mode, 1=dev (SSD) mode, 2=bypass devcheck
+cros_boot_mode -b -s -m developer
+DEVMODE=$((! $?))
+
+# Check if we need to perform firmware update.
+NEED_FIRMWARE_UPDATE='/mnt/stateful_partition/.need_firmware_update'
+if [ -f "$NEED_FIRMWARE_UPDATE" ]; then
+  rm -f "$NEED_FIRMWARE_UPDATE"
+  FIRMWARE_UPDATE_SCRIPT='/usr/sbin/chromeos-firmwareupdate'
+  FIRMWARE_UPDATE_LOGS='/mnt/stateful_partition/var/log/update_firmware.log'
+  if [ -x "$FIRMWARE_UPDATE_SCRIPT" ]; then
+    if [ "$DEVMODE" = "1" -o -f /root/.dev_mode ]; then
+      # More message on console for developer mode and dev builds
+      FIRMWARE_UPDATE_LOGS="/dev/tty1 $FIRMWARE_UPDATE_LOGS"
+    fi
+    mkdir -p /mnt/stateful_partition/var/log
+    [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
+    chromeos-boot-alert update_firmware /dev/tty1
+    IS_CHROMEOS_STARTUP=1 "$FIRMWARE_UPDATE_SCRIPT" 2>&1 |
+      tee $FIRMWARE_UPDATE_LOGS
+  fi
+fi
+
+# If we've switched from verified mode to developer mode, clobber the state.
+# The reverse is not possible to detect reliably, but we try.
+# In addition, normal and unsupported are treated are equivalent otherwise
+# booting the first time on a legacy device would clobber state for no reason.
+# (NOTE, this will not be triggered in recovery mode.)
+
+# File used to trigger a stateful reset
+RESET_FILE="/mnt/stateful_partition/factory_install_reset"
+
+# File defined by clobber-state
+DEVMODE_FILE="/mnt/stateful_partition/.developer_mode"
+
+# If in factory mode or a wipe process is already scheduled, don't change it.
+if [ -n "$IS_FACTORY_MODE" -o -O "$RESET_FILE" ]; then
+  DEVMODE=2
+fi
+
+# Transition to devmode
+if [ ${DEVMODE} -eq 1 -a ! -O ${DEVMODE_FILE} ]; then
+  # Delay the first developer mode boot by 5 minutes unless the images is a
+  # developer image.  We check the dev image here to avoid a stat(2) on normal
+  # boots
+  # TODO(wad) just have the dev_mode build stamp the stateful.
+  if [ ! -f /root/.dev_mode ]; then
+    # TODO(wad) Throw up a splash.
+    [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
+    chromeos-boot-alert enter_dev /dev/tty1
+    # TODO(wad,wfrichar) Have user input sudo/vt2 password here.
+    echo "keepimg" > ${RESET_FILE}
+  fi
+
+  # Transition from devmode
+elif [ ${DEVMODE} -eq 0 -a -O ${DEVMODE_FILE} ]; then
+  # When coming back from developer mode, we don't need to clobber
+  # as aggressively. Fast will do the trick.
+  if [ ! -f /root/.dev_mode ]; then
+    [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
+    chromeos-boot-alert leave_dev /dev/tty1
+    echo "fast keepimg" > ${RESET_FILE}
+  fi
+fi
+
+# Check if the stateful partition has requested self-destruction
+# This is used for the factory install process
+if [ -O "$RESET_FILE" ]; then
+  [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
+  chromeos-boot-alert wipe /dev/tty1 \
+    /mnt/stateful_partition/wipe_splash.png
+  ARGS="$(cat ${RESET_FILE})"
+  exec clobber-state "$ARGS"
+fi
+
+# Check if we have an update to stateful pending.  This is used for dev_mode.
+VAR_NEW="/mnt/stateful_partition/var_new"
+DEVELOPER_NEW="/mnt/stateful_partition/dev_image_new"
+STATEFUL_UPDATE="/mnt/stateful_partition/.update_available"
+if [ -f "$STATEFUL_UPDATE" ] ; then
+  # Remove old state in case this process got interrupted by a reset, this is
+  # usually a no-op.
+  rm -rf /mnt/stateful_partition/dev_image_old \
+    /mnt/stateful_partition/var_old
+  # The moves can fail if they were previously interrupted mid-op.
+  mv /mnt/stateful_partition/dev_image \
+    /mnt/stateful_partition/dev_image_old || true
+  mv /mnt/stateful_partition/var /mnt/stateful_partition/var_old || true
+  mv "$DEVELOPER_NEW" /mnt/stateful_partition/dev_image || true
+  mv "$VAR_NEW" /mnt/stateful_partition/var || true
+  # Backgrounded to take off boot path.
+  rm -rf "$STATEFUL_UPDATE" \
+    /mnt/stateful_partition/dev_image_old \
+    /mnt/stateful_partition/var_old &
+fi
+
+# Make sure stateful partition has some basic directories
+# TODO(hungte) verify if these directories are really created or corrupted (ex,
+# occupied by files), or start a clobber-state.
+mkdir -p -m 0755 /mnt/stateful_partition/etc
+mkdir -p -m 0755 /mnt/stateful_partition/home
+mkdir -p -m 0755 /mnt/stateful_partition/var/cache
+mkdir -p -m 0755 /mnt/stateful_partition/var/empty
+mkdir -p -m 0755 /mnt/stateful_partition/var/lib
+mkdir -p -m 0755 /mnt/stateful_partition/var/lib/ureadahead
+mkdir -p -m 0755 /mnt/stateful_partition/var/lock
+mkdir -p -m 0755 /mnt/stateful_partition/var/log
+mkdir -p -m 0755 /mnt/stateful_partition/var/run
+chmod 0755 /mnt/stateful_partition/var
+
+mkdir -p -m 1777 /mnt/stateful_partition/var/tmp
+
+# Directory for ChromeOS metrics collection
+mkdir -p -m 0755 /mnt/stateful_partition/var/log/metrics
+chown chronos:chronos /mnt/stateful_partition/var/log/metrics
+
+# Create a directory for the window manager to write logs to before the
+# user has logged in (it won't be able to do it itself, since it runs as
+# chronos but /var/log is owned by root).
+mkdir -p -m 0755 /mnt/stateful_partition/var/log/window_manager
+chown chronos:chronos /mnt/stateful_partition/var/log/window_manager
+
+# Mount some /var directories and /home.  These mounts inherit
+# nodev,noexec,nosuid from /mnt/stateful_partition above.
+mount -n --bind /mnt/stateful_partition/var /var
+mount -n --bind /mnt/stateful_partition/home /home
+# If we're mod_for_test, both /home and /tmp need to be mounted without noexec
+#mod_for_test#mount -n -o remount,exec,suid /home
+#mod_for_test#mount -n -o remount,exec,suid /tmp
+
+# Mount stateful partition for dev packages
+# TODO(sosa@chromium.org) - Use $DEVMODE value?
+if [ -f /root/.dev_mode ] ; then
+  # Mount and then remount to enable exec/suid
+  mount -n --bind /mnt/stateful_partition/dev_image /usr/local
+  mount -n -o remount,exec,suid /usr/local
+fi
+
+mount -n -t tmpfs -o mode=0755,nodev,noexec,nosuid varrun /var/run
+touch /var/run/.ramfs  # TODO: Is this needed?
+mount -n -t tmpfs -o mode=1777,nodev,noexec,nosuid varlock /var/lock
+touch /var/lock/.ramfs # TODO: Is this needed?
+mount -n -t tmpfs -o nodev,noexec,nosuid media /media
+
+mount -n -t debugfs debugfs /sys/kernel/debug
+
+# Enable crash reporting for all future exec'd processes, even those that have
+# gone through setuid.
+echo 2 > /proc/sys/fs/suid_dumpable
+
+# NOTE: ensure that a rootdev has been found.
+if [ "$ROOTDEV_RET_CODE" = "0" ] ; then
+  # Mount OEM partner partition if OOBE has not yet been completed.
+  # Also create /tmp/machine-info.
+  if [ ! -e /home/chronos/.oobe_completed ]; then
+    OEM_DEV=${ROOT_DEV%[0-9]*}8
+    mount -n -t ext3 "$OEM_DEV" -o nodev,noexec,nosuid /mnt/partner_partition
+    mosys -k smbios info system > /tmp/machine-info
+  fi
+fi
+
+#
+# Note that ureadahead depends on some of the operations above.
+# Notably, the command requires /var to be mounted, because the pack
+# file is located in /var/lib/ureadahead, and ureadahead tracing
+# requires /sys/kernel/debug be mounted.
+#
+ureadahead &
+
+# Some things freak out if no hostname is set.
+hostname localhost
+
+bootstat post-startup
+
+# Always return success to avoid killing init
+exit 0
