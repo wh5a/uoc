@@ -11,7 +11,7 @@ ChromeOS' security policy. ChromeOS mounts writable partions as
 non-executable, and executable partitions as non-writable. Did I
 mention setting up the build environment is intimidating too?
 
-The second approach is somewhat tedious, and throws all the ChromeOS
+The second approach is somewhat tedious (but now can be [automated](http://chromeos-cr48.blogspot.com/2010/12/easy-way-to-install-ubuntu-on-your-cr.html)), and throws all the ChromeOS
 goodness away.
 
 Since I am new to this ChromeOS thing, and I've been away from Debian
@@ -31,7 +31,7 @@ sudo reboot
 sudo mount -o remount,rw /
 
 # Remount /var exec because dpkg wants to execute scripts extracted from .deb files
-# This command must be run after each reboot
+# To avoid running this command after each reboot, copy the modified /sbin/chromeos_startup
 sudo mount -o remount,exec /var
 
 # Download dpkg's data.tar.gz from Ubuntu Karmic, extract it to / to get the dpkg binary
@@ -67,6 +67,20 @@ I'll be updating the [wiki](https://github.com/wh5a/uoc/wiki/Compatible-Packages
 Modifying your root file system will most likely disable ChromeOS'
 auto update. Overwriting existing libraries may make your system fail
 to start. But good thing is you're always able to restore to factory setting.
+
+# Increasing free space
+The root partition's size is only about 800 MB which is easily filled up
+by new packages. One solution is to 
+[resize](http://www.chromium.org/chromium-os/developer-information-for-chrome-os-devices/cr-48-chrome-notebook-developer-information/how-to-boot-ubuntu-on-a-cr-48#TOC-Free-up-some-SSD-space-for-Ubuntu)
+the partitions. I chose to make use of the other inactive backup root
+partition. Since ChromeOS hasn't been updated yet, the active root
+partition is on `/dev/sda3`, and the inactive one on `/dev/sda5`.
+
+I mounted `/dev/sda5`, erased its content, then moved the files under
+`/usr/share` over to free up space on the active root partition. I
+then need to tell the system to mount `/dev/sda5` under `/usr/share`
+after booting up. If you're following through, you can uncomment the
+`mount` line in the modified `/sbin/chromeos_startup`.
 
 # How to contribute
 I've created a simple tool `FakePkg` that automates the process of
@@ -112,6 +126,19 @@ For more information, see
 [http://www.chromium.org/tips-and-tricks-for-chromium-os-developers](http://www.chromium.org/tips-and-tricks-for-chromium-os-developers)  
 [http://www.chromium.org/chromium-os/how-tos-and-troubleshooting](http://www.chromium.org/chromium-os/how-tos-and-troubleshooting)  
 [http://www.chromium.org/chromium-os/building-chromium-os/directory-structure](http://www.chromium.org/chromium-os/building-chromium-os/directory-structure)
+
+ChromeOS uses Ubuntu's [upstart](http://upstart.ubuntu.com/) to handle starting
+of tasks and services during boot, stopping them during shutdown and
+supervising them while the system is running. Unfortunately ChromeOS
+seems to have reduced and thus crippled upstart's functionality. There's no `/etc/init.d` directory for managing
+daemons. `sudo initctl list` fails to run. There are many interesting
+scripts under `/etc/init`. For example, we can get a shell by pressing
+Ctrl-Alt-F2. It's actually controlled by `/etc/init/tty2.conf`. We can
+enable Ctrl-Alt-F3 by copying it to `tty3.conf` and replacing `tty2`
+with `tty3` in the file. Another more interesting file is
+`/etc/init/startup.conf`, which passes control to
+`/sbin/chromeos_startup`. This script is run on startup and we've
+already seen changing this file can be very useful.
 
 # To-do
 1. Port more packages
