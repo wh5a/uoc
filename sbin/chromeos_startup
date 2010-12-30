@@ -64,7 +64,7 @@ if [ "$ROOTDEV_RET_CODE" = "0" ]; then
     rmdir "$TMP_STATEFUL"
 
   # For all other cases, mount stateful partition from STATE_DEV.
-  elif ! mount -n -t ext3 -o nodev,noexec,nosuid \
+  elif ! mount -n -t ext3 -o nodev,nosuid \
          "$STATE_DEV" /mnt/stateful_partition; then
     # Try to rebuild the stateful partition by  clobber-state
     # (for security concern, we don't use fast mode)
@@ -202,6 +202,7 @@ chown chronos:chronos /mnt/stateful_partition/var/log/window_manager
 # nodev,noexec,nosuid from /mnt/stateful_partition above.
 mount -n --bind /mnt/stateful_partition/var /var
 mount -n --bind /mnt/stateful_partition/home /home
+#mount /dev/sda5 /usr/share
 # If we're mod_for_test, both /home and /tmp need to be mounted without noexec
 #mod_for_test#mount -n -o remount,exec,suid /home
 #mod_for_test#mount -n -o remount,exec,suid /tmp
