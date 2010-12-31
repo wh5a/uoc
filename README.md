@@ -105,9 +105,15 @@ You're also welcome to improve my simple tools, or report which packages can be 
 I admit my approach is an ugly hack and if you know a better solution
 please let me know.
 
-# SSH
-The ssh client stores `known_hosts` under home directory (`/home/chronos/user/.ssh`),
+# Home directory
+The concept of home directory is a little confusing under
+ChromeOS. Some programs use `/home/chronos/` and others use
+`/home/chronos/user/`.
+
+SSH client stores `known_hosts` under `/home/chronos/user/.ssh`,
 but reads config and keys from `/home/chronos/.ssh`.
+
+Git reads `.gitconfig` from `/home/chronos/user/`.
 
 # More techincal stuff for hackers
 ChromiumOS manages packages based on Gentoo's portage system. Its
