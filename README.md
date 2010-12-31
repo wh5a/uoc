@@ -94,6 +94,10 @@ You're also welcome to improve my simple tools, or report which packages can be 
 I admit my approach is an ugly hack and if you know a better solution
 please let me know.
 
+# SSH
+The ssh client stores `known_hosts` under home directory (`/home/chronos/user/.ssh`),
+but reads config and keys from `/home/chronos/.ssh`.
+
 # More techincal stuff for hackers
 ChromiumOS manages packages based on Gentoo's portage system. Its
 overlay can be viewed on the [web](http://git.chromium.org/gitweb/)
@@ -130,8 +134,8 @@ For more information, see
 ChromeOS uses Ubuntu's [upstart](http://upstart.ubuntu.com/) to handle starting
 of tasks and services during boot, stopping them during shutdown and
 supervising them while the system is running. Unfortunately ChromeOS
-seems to have reduced and thus crippled upstart's functionality. There's no `/etc/init.d` directory for managing
-daemons. `sudo initctl list` fails to run. There are many interesting
+seems to have reduced upstart's functionality. There's no `/etc/init.d` directory for managing
+daemons. There are many interesting
 scripts under `/etc/init`. For example, we can get a shell by pressing
 Ctrl-Alt-F2. It's actually controlled by `/etc/init/tty2.conf`. We can
 enable Ctrl-Alt-F3 by copying it to `tty3.conf` and replacing `tty2`

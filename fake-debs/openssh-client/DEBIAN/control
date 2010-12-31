@@ -1,0 +1,5 @@
+Package: openssh-client
+Version: 1:5.1p2
+Architecture: all
+Maintainer: Fake deb generator
+Description: Fake openssh-client
