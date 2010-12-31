@@ -23,6 +23,11 @@ I chose to port `dpkg`/`apt` from Ubuntu Karmic, because its glibc
 top of ChromeOS is impossible, although I like Debian and Arch so much
 more.
 
+Compilers (gcc and ghc), editors (emacs), x11-apps, and git have been
+successfully ported. This project is now completely self hosted
+without relying on an Ubuntu system for development. I personally
+consider it to be more than enough for casual programming.
+
 # How-to
 <pre><code># Turn off rootfs verification
 sudo /usr/share/vboot/bin/make_dev_ssd.sh --remove_rootfs_verification
@@ -34,7 +39,7 @@ sudo mount -o remount,rw /
 # To avoid running this command after each reboot, copy the modified /sbin/chromeos_startup
 sudo mount -o remount,exec /var
 
-# Download dpkg's data.tar.gz from Ubuntu Karmic, extract it to / to get the dpkg binary
+# Download dpkg's data.tar.gz from Ubuntu Karmic or this git project, extract it to / to get the dpkg binary
 cd /; sudo tar zxf /path/to/data.tar.gz
 
 # Create files needed by dpkg
@@ -55,11 +60,17 @@ and you'll find `/var/cache/apt/archives/foo*.deb`.
 Before you `apt-get install` a program, double check if it's pulling
 in any dependency that will overwrite existing files. Doing so
 may break the login manager, the browser, or any other critical
-program. I've created a simple tool `TestPkg`:
-<pre><code>
-$ ./tools/TestPkg ocaml
-["camlp4","ledit","libncurses5-dev","libpthread-stubs0","libpthread-stubs0-dev","libx11-dev","libxau-dev","libxcb1-dev","libxdmcp-dev","ocaml-base","ocaml-base-nox","ocaml-interp","ocaml-nox","x11proto-core-dev","x11proto-input-dev","x11proto-kb-dev","xtrans-dev"]
-</code></pre>
+program. I've created a simple tool `TestPkg` that looks at the
+dependencies and try to guess if they already exist on the system. If
+they do, a fake deb will be created. If it's unsure, i.e. some files
+exist but others don't, it lists the files and let the user
+decide. There are still some bugs in spawning child processes, so you
+may have to run the tool first to download the dependencies and rerun
+it again.
+
+For example, before installing `git-core`, run `./tools/TestPkg git-core`
+to test its dependencies and create fake debs. `dpkg -i` the fake debs
+and then `apt-get install git-core`.
 
 I'll be updating the [wiki](https://github.com/wh5a/uoc/wiki/Compatible-Packages) for compatible programs.
 
@@ -147,4 +158,4 @@ already seen changing this file can be very useful.
 # To-do
 1. Port more packages
 2. Write scripts for auto installation
-3. Improve the workflow
+3. Improve the tools, especially `TestPkg`.
