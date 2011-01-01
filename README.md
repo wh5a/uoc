@@ -161,6 +161,8 @@ with `tty3` in the file. Another more interesting file is
 `/sbin/chromeos_startup`. This script is run on startup and we've
 already seen changing this file can be very useful.
 
+It's possible to install any standard x86/x64 OS, after you flash the [BIOS](http://www.insanelymac.com/forum/index.php?showtopic=241376).
+
 # To-do
 1. Port more packages
 2. Write scripts for auto installation
