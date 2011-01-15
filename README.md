@@ -1,21 +1,21 @@
 # Why
-This project aims to add a package manager to ChromeOS running on
-Cr-48. At present there are only two ways to install native Linux
+As far as I know there are three ways to install native Linux
 applications:  
-1. Build a ChromiumOS image and customize its packages,  
-2. Install a real Linux distro.
+1. Build a ChromiumOS image and customize its packages. Very
+   inflexible. After you've built the
+   image and boot the computer, you can no longer add new programs due to
+   ChromeOS' security policy. ChromeOS mounts writable partions as
+   non-executable, and executable partitions as non-writable. Did I
+   mention setting up the build environment is intimidating too?  
+2. Install a real Linux distro the
+[approved way](http://www.chromium.org/chromium-os/developer-information-for-chrome-os-devices/cr-48-chrome-notebook-developer-information/how-to-boot-ubuntu-on-a-cr-48). Somewhat
+tedious (but now can be
+[automated](http://chromeos-cr48.blogspot.com/2010/12/easy-way-to-install-ubuntu-on-your-cr.html)).  
+3. Install a standard x86/x64 OS, after you flash the [BIOS](http://www.insanelymac.com/forum/index.php?showtopic=241376).
 
-The first approach is powerful but inflexible. After you've built the
-image and boot the computer, you can no longer add new programs due to
-ChromeOS' security policy. ChromeOS mounts writable partions as
-non-executable, and executable partitions as non-writable. Did I
-mention setting up the build environment is intimidating too?
-
-The second approach is somewhat tedious (but now can be [automated](http://chromeos-cr48.blogspot.com/2010/12/easy-way-to-install-ubuntu-on-your-cr.html)), and throws all the ChromeOS
-goodness away.
-
-Since I am new to this ChromeOS thing, and I've been away from Debian
-for a while, I need your help to make this project succeed.
+This project adds a package manager to ChromeOS running on
+Cr-48, so that you can install native Linux applications without
+setting up a separate OS.
 
 # What
 I chose to port `dpkg`/`apt` from Ubuntu Karmic, because its glibc
@@ -24,7 +24,7 @@ top of ChromeOS is impossible, although I like Debian and Arch so much
 more.
 
 Compilers (gcc and ghc), editors (emacs), x11-apps, and git have been
-successfully ported. This project is now completely self hosted
+successfully installed. This project is now completely self hosted
 without relying on an Ubuntu system for development. I personally
 consider it to be more than enough for casual programming.
 
@@ -135,7 +135,7 @@ pulled in. Unfortunately, while the package manager (`sys-apps/portage`)
 and the toolchain (`sys-devel/`) are in the portage, they don't get built into
 the image.
 
-The stock system on cr-48 seems to be built from ChromiumOS'
+The stock system on beta channel seems to be built from ChromiumOS'
 `0.9.128.B` branch (B for beta?), with some changes (some dev packages
 removed, and some proprietary drivers added).
 
@@ -161,9 +161,13 @@ with `tty3` in the file. Another more interesting file is
 `/sbin/chromeos_startup`. This script is run on startup and we've
 already seen changing this file can be very useful.
 
-It's possible to install any standard x86/x64 OS, after you flash the [BIOS](http://www.insanelymac.com/forum/index.php?showtopic=241376).
+Some
+[people](https://groups.google.com/forum/#!forum/cr-48-test-pilots)
+are creating their own unofficial images. I find
+[this one](http://www.duh.org/chromiumos/cr-48/) particularly
+interesting. Its .pkglist files list the included packages.
 
 # To-do
-1. Port more packages
+1. Verify more packages
 2. Write scripts for auto installation
 3. Improve the tools, especially `TestPkg`.
